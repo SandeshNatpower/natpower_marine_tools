@@ -1,0 +1,16 @@
+streamlit
+pandas
+flask
+flask_restful
+scipy
+flask_sqlalchemy
+psycopg2-binary
+sqlalchemy
+leafmap
+geopandas
+folium
+streamlit-folium
+matplotlib
+pillow
+seaborn
+psutil
