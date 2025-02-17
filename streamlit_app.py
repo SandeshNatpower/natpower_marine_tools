@@ -71,37 +71,14 @@ with maincol2:
     with col2:
         propulsion_consumption = df_prop[(df_prop['min_dwt'] >= min_gt)  ]['propulsion_consumption'].iloc[0] #& (df_prop['max_dwt'] <= max_gt)
         propulsion_consumption = st.number_input("propulsion_consumption",value = propulsion_consumption)        
-        
-# # Title of the app
-# st.title('Select Port Start Time & End Time')
-# col1,col2,col3 =st.columns(3)
-# default_date = datetime.date(2023, 1, 1)
-# default_time = datetime.time(0, 0)
-# with col1:
-#     start_date_input = st.date_input("Select a Start date", value= default_date)
-#     start_time_input = st.time_input("Select a Start time",value=default_time) 
-#     st.write(f"Start Time: {start_date_input} {start_time_input}") 
-# with col2:
-#     end_date_input = st.date_input("Select a End date", value=start_date_input + timedelta(days=1))
-#     end_time_input = st.time_input("Select a End time",value=default_time) 
-#     st.write(f"Start Time: {end_date_input} {end_time_input}")
-# with col3:
-#     # Combine date and time inputs into datetime objects
-#     start_datetime = datetime.datetime.combine(start_date_input, start_time_input)
-#     end_datetime = datetime.datetime.combine(end_date_input, end_time_input)
 
-#     # Calculate the total docking time
-#     docking_time = end_datetime - start_datetime
+# Display formulas
+st.markdown("### Energy Calculation Formulas")
+st.latex("\\text{Average Hoteling MW/h} = \\frac{\\text{Average Hoteling kW}}{1000} \\times \\text{Berth Docking Time (hours)}")
+st.latex("\\text{Propulsion Consumption (MWh)} = \\text{Propulsion Consumption Rate (MW)} \\times \\text{Travel Distance (NM)}")
 
-#     # Display the total docking time
-#     st.write(f"Total Docking Time: {docking_time}")
 
-#     # Optionally, display the total docking time in hours and minutes
-#     total_hours = docking_time.total_seconds() / 3600
-#     st.write(f"Total Docking Time (Hours):")
-#     st.title(f" {total_hours:.2f} hours")
-
-    # Title of the app
+# Title of the app
 st.title('Interactive Data Editor for Docking Management')
 
 # Define default values
@@ -245,60 +222,6 @@ result_df = pd.DataFrame({
 st.title('Summary Table')
 st.dataframe(result_df)
 total_hours = new_df["Berth_Docking_Time"].sum()
-# st.title(total_hours)
-
-
-st.title('Battrey Information')
-col1,col2 = st.columns(2)
-with col1:
-    st.title('Size of Battrey KW:')
-    battery_req = int(st.number_input("Battrey",value = 5000))
-with col2:
-    st.title('Cost of battrey required £:')
-    battery_cost = int(st.number_input("Battrey_cost",value = 5000))
-col1,col2,col3 = st.columns(3)
-with col1:
-    st.title('Reserve margin %:')
-    Reserve_margin = int(st.number_input("Reserve_margin",value = 15))
-with col2:
-    st.title('Battery Efficiency %:')
-    Battrey_Eff = int(st.number_input("Battrey_Eff",value = 85))
-with col3:
-    st.title('State of Charge %:')
-    state_charge = int(st.number_input("state_charge",value = 80))
-
-
-# Total energy required for hoteling and propulsion
-total_energy_docking = new_df['average_hoteling_MW/h'].sum()
-st.title(f"Total Cold Ironing Energy Required for Docking: {total_energy_docking:.4f} MWh")
-
-battery_req = battery_req / 1000
-
-# Calculate battery energy capacity based on docking duration
-battery_capacity_kwh = battery_req * total_hours
-st.title(f"Total Battery Capacity (MWh): {battery_capacity_kwh:.2f} MWh")
-
-# Calculate number of batteries required
-required_batteries = total_energy_docking / (battery_req)
-
-# Display Results
-st.title(f"Batteries Required (size {battery_req} MWh): {required_batteries:.2f}")
-st.title(f"Estimated Battery Cost: {required_batteries * battery_cost:.2f}£")
-newbattery = ((battery_capacity_kwh * total_hours * (1 + (Reserve_margin/100)))/(Battrey_Eff/100))*(state_charge/100)
-
-# Adjust battery requirements considering total_energy_docking
-newbattery = (
-    (battery_capacity_kwh + total_energy_docking)  # Include docking energy in kWh
-    * total_hours
-    * (1 + (Reserve_margin / 100))
-) / ((Battrey_Eff / 100) * (state_charge / 100))
-
-st.title(f"Battery Requirement After All Factors Consideration (incl. Docking Energy): {newbattery:.2f} MW")
-
-if total_energy_docking <= battery_req:
-    st.success("The battery size is sufficient to cover docking energy requirements.")
-else:
-    st.error("The battery size is insufficient. Consider increasing the battery capacity or count.")
 
 # Emission
 st.title('Emission Calculator')
@@ -449,6 +372,14 @@ def display_pollutant_values(df, pollutant):
 # Process and display each pollutant, and compute emissions
 pollutant_emissions = {}
 
+st.markdown("### Source: United States Environmental Protection Agency")
+st.markdown("[Emission Factors Reference](https://nepis.epa.gov/Exe/ZyPDF.cgi?Dockey=P1014J1S.pdf)")
+
+# Display Emission Calculation Formulas
+st.markdown("### Emission Calculation Formulas")
+st.latex("\\text{Pollutant Emission} = \\text{Energy Consumption} \\times \\text{Emission Factor (g/kWh)}")
+st.latex("\\text{Total Emission} = \\text{Cold Ironing Emission} + \\text{Propulsion Emission}")
+
 for pollutant in pollutants:
     df_filtered = df[df['pollutant_name'] == pollutant].copy()  # Filter dataframe for the specific pollutant
     df_filtered = update_selection(df_filtered, pollutant)  # Update selection for auxiliary and propulsion
@@ -471,72 +402,6 @@ st.title('Emission Calculations')
 # Display the final DataFrame with calculated emissions
 st.dataframe(new_df)
 
-# Calculate emission savings by replacing auxiliary engines with batteries
-emission_savings = pollutant_emissions['CO2_cold_ironing_emission'] * (required_batteries / battery_req)
-
-st.write(f"Estimated CO2 Emission Savings with Batteries: {emission_savings.sum():.2f} g")
-
-
-
-# auxiliary_selected = False
-# propulsion_selected = False
-# for index, row in df.iterrows():
-#     if row['engine_group'] == 'Auxiliary' and not auxiliary_selected:
-#         df.at[index, 'Selection'] = True
-#         auxiliary_selected = True  # Mark auxiliary as selected
-#     elif row['engine_group'] == 'Propulsion'and not propulsion_selected:
-#         propulsion_selected = True
-#         df.at[index, 'Selection'] = True
-
-# # Initialize session state
-# if 'prev_auxiliary_idx' not in st.session_state:
-#     st.session_state.prev_auxiliary_idx = None
-# if 'prev_propulsion_idx' not in st.session_state:
-#     st.session_state.prev_propulsion_idx = None
-
-# col1, col2 = st.columns(2)
-# with col1:
-#     if 'prev_auxiliary_idx' not in st.session_state:
-#         st.session_state.prev_auxiliary_idx = None
-        
-#     emission_df = st.data_editor(df,disabled=('engine_group', 'pollutant_name', 'fuel_type', 'engine_type', 'emission_factor_formula'))
-#     st.session_state.emission_df = emission_df
-    
-# with col2:
-#    # Initialize selection variables
-#     selected_auxiliary_value = None
-#     selected_propulsion_value = None
-
-#     # Check if any Auxiliary is selected
-#     aux_selection = emission_df[(emission_df['Selection'] == True) & (emission_df['engine_group'] == 'Auxiliary')]
-#     if not aux_selection.empty:
-#         selected_auxiliary_value = aux_selection['values_g_per_kwh'].iloc[0]
-#         current_auxiliary_idx = aux_selection.index[0]
-
-#         # Unselect the previous Auxiliary if a new one is selected
-#         if st.session_state.prev_auxiliary_idx is not None and st.session_state.prev_auxiliary_idx != current_auxiliary_idx:
-#             emission_df.at[st.session_state.prev_auxiliary_idx, 'Selection'] = False
-
-#         # Update session state for Auxiliary
-#         st.session_state.prev_auxiliary_idx = current_auxiliary_idx
-
-#     # Check if any Propulsion is selected
-#     prop_selection = emission_df[(emission_df['Selection'] == True) & (emission_df['engine_group'] == 'Propulsion')]
-#     if not prop_selection.empty:
-#         selected_propulsion_value = prop_selection['values_g_per_kwh'].iloc[0]
-#         current_propulsion_idx = prop_selection.index[0]
-
-#         # Unselect the previous Propulsion if a new one is selected
-#         if st.session_state.prev_propulsion_idx is not None and st.session_state.prev_propulsion_idx != current_propulsion_idx:
-#             emission_df.at[st.session_state.prev_propulsion_idx, 'Selection'] = False
-
-#         # Update session state for Propulsion
-#         st.session_state.prev_propulsion_idx = current_propulsion_idx
-
-#     # Display selected values
-#     st.title('CO2')
-#     st.write("Selected Auxiliary Value:", selected_auxiliary_value if selected_auxiliary_value is not None else "None")
-#     st.write("Selected Propulsion Value:", selected_propulsion_value if selected_propulsion_value is not None else "None")
 
 @st.cache_data(ttl="10m")
 def co2_change_val():
@@ -551,90 +416,3 @@ def highlight_changes_co2(val):
 
 # Manually trigger the calculation function
 co2_change_val()
-
-# Future Year Forecast
-st.title('Future Year Forecast')
-
-col1,col2 = st.columns(2)
-with col1:
-    start_year = int(st.number_input("Future Start Year",value = 2024))
-with col2:
-    end_year = int(st.number_input("Future End Yeat",value = 2070))
-
-df = get_data(f"select distinct main_vessel_category FROM reference.ref_vessel_type_category where vessel_category = '{vessel_options}';")
-main_vessel_category = df['main_vessel_category'].iloc[0]
-
-df = get_data(f"SELECT * FROM public.ref_future_power_consumption where year between {start_year} and {end_year} and change_type in('Low','Medium','High','{main_vessel_category}');")
-df['year'] = pd.to_datetime(df['year'], format='%Y')
-df['year_val'] = df['year']
-df.set_index('year', inplace=True)
-# Set up columns in Streamlit
-
-col1, col2, col3, col4 = st.columns(4)
-
-# Cold Ironing chart
-with col1:
-    st.write("Cold Ironing")
-    pivot_df = df[df['type'] == 'Cold Ironing'].pivot( columns='change_type', values='change_in_percentage')
-    st.dataframe(pivot_df)
-    st.line_chart(pivot_df)
-
-# Propulsion Adoption chart
-with col2:
-    st.write("Propulsion Adoption")
-    pivot_df = df[df['type'] == 'Propulsion Adoption'].pivot( columns='change_type', values='change_in_percentage')
-    st.dataframe(pivot_df)
-    st.line_chart(pivot_df)
-
-# Propulsion Distance chart
-with col3:
-    st.write("Propulsion Distance")
-    pivot_df = df[df['type'] == 'Propulsion Distance'].pivot( columns='change_type', values='change_in_percentage')
-    st.dataframe(pivot_df)
-    st.line_chart(pivot_df)
-
-# Traffic Forecast chart
-with col4:
-    st.write("Traffic Forecast")
-    pivot_df = df[df['type'] == 'Traffic Forecast'].pivot( columns='change_type', values='change_in_percentage')
-    st.dataframe(pivot_df)
-    st.line_chart(pivot_df)
-
-df_extracted = styled_df.data
-df_extracted['key'] = 1
-df['key'] = 1
-merged_df = pd.merge(df_extracted, df, on='key').drop('key', axis=1)
-traffic = df[df['type'] == 'Traffic Forecast']
-traffic['traffic'] = traffic['change_in_percentage']
-traffic= traffic[['traffic','year_val']]
-
-merged_df = pd.merge(merged_df, traffic, on='year_val')
-merged_df['new_cold_ironing_mw_vessel'] = merged_df['average_hoteling_MW'] * ((1 + merged_df['traffic'])/100 )
-merged_df['change_cold_ironing_mw_vessel'] = (merged_df['change_in_percentage']/100) * ( merged_df['average_hoteling_MW'] * ((1 + merged_df['traffic'])/100 ))
-merged_df['new_propulsion_consumption'] = merged_df['propulsion_consumption_MWh'] * (1 + merged_df['traffic']/100 )
-merged_df['change_propulsion_consumption'] = (merged_df['change_in_percentage']/100) * ( merged_df['propulsion_consumption_MWh'] * ((1 + merged_df['traffic'])/100 ))
-
-merged_df['year'] = merged_df['year_val']
-merged_df.set_index('year', inplace=True)
-
-# st.dataframe(merged_df)
-
-st.write("Cold Ironing - Future Forecast")
-pivot_df =merged_df[merged_df['type'] == 'Cold Ironing'].pivot_table(index='year_val', columns='change_type', values='change_cold_ironing_mw_vessel', aggfunc='sum')
-# st.dataframe(pivot_df)
-st.line_chart(pivot_df)
-
-st.write("Propulsion Adoption - Future Forecast")
-pivot_df =merged_df[merged_df['type'] == 'Propulsion Adoption'].pivot_table(index='year_val', columns='change_type', values='change_cold_ironing_mw_vessel', aggfunc='sum')
-# st.dataframe(pivot_df)
-st.line_chart(pivot_df)
-
-st.write("Propulsion Distance - Future Forecast")
-pivot_df =merged_df[merged_df['type'] == 'Propulsion Distance'].pivot_table(index='year_val', columns='change_type', values='change_cold_ironing_mw_vessel', aggfunc='sum')
-# st.dataframe(pivot_df)
-st.line_chart(pivot_df)
-
-st.write("Traffic Forecast - Future Forecast")
-pivot_df =merged_df[merged_df['type'] == 'Traffic Forecast'].pivot_table(index='year_val', columns='change_type', values='change_cold_ironing_mw_vessel', aggfunc='sum')
-# st.dataframe(pivot_df)
-st.line_chart(pivot_df)
