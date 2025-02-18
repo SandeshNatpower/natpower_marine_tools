@@ -25,4 +25,4 @@ COPY . /app
 EXPOSE 8501
 
 # Run the Streamlit app
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "Natpower_Marine_Calculator.py", "--server.port=8501", "--server.address=0.0.0.0"]
