@@ -34,7 +34,7 @@ if enable_cold_ironing:
         df = get_data(queryval) 
         # Define GT Class Ranges
         gt_ranges = {
-            "Less Than 150": (0, 149),
+            "Less Than 150": (0, 150),
             "GT 150-4999": (150, 4999),
             "GT 5000-10000": (5000, 9999),
             "GT 10000-20000": (10000, 19999),
@@ -60,11 +60,11 @@ if enable_cold_ironing:
 
         # Convert transformed data into DataFrame
         df_transformed = pd.DataFrame(transformed_data)
-
         # Populate values based on the GT range
         for index, row in df.iterrows():
             for gt_class, (min_gt, max_gt) in gt_ranges.items():
                 if row["min_gt"] >= min_gt and row["max_gt"] <= max_gt:
+                    # st.write(min_gt,row["min_gt"],max_gt,row["max_gt"],gt_class, row["vessel_category"], row["average_hoteling_kw"])
                     df_transformed.loc[df_transformed["GT Class"] == gt_class, row["vessel_category"]] = row["average_hoteling_kw"]
 
         st.title("GT Class Cold Ironing Data")
@@ -126,15 +126,15 @@ if enable_cold_ironing:
     cold_iron_query = f"SELECT * FROM reference.ref_cold_ironing_kw WHERE vessel_category = '{vessel_options}';"
     df_cold = get_data(cold_iron_query)
     df_cold['min_gt'] = pd.to_numeric(df_cold['min_gt'], errors='coerce')
-
     # **Cold Ironing Section*
     st.title('Cold Ironing Caluclation')
     st.markdown('## Cold Ironing in KW with resepective Gross Tonnage')
+    st.dataframe(df_cold)
     col1, col2 = st.columns(2)
     with col1:
         min_gt = int(st.number_input("Select Gross Tonnage (GT)", value=150))
     with col2:
-        avg_hoteling_kw = df_cold[df_cold['min_gt'] >= min_gt]['average_hoteling_kw'].iloc[0]
+        avg_hoteling_kw = df_cold[(df_cold['min_gt'] <= min_gt) & (df_cold['max_gt'] >= min_gt)]['average_hoteling_kw'].iloc[0]
         avg_hoteling_kw = st.number_input("Cold Ironing kW/h", value=avg_hoteling_kw)
 
     col1, col2 = st.columns(2)
@@ -151,11 +151,12 @@ if enable_propulsion:
     # **Propulsion Section**
     st.title('Propulsion Consumption')
     st.markdown('## Propulsion in MW with resepective Dead Weight Tonnage')
+    st.dataframe(df_prop)
     col1, col2 = st.columns(2)
     with col1:
         min_dwt = int(st.number_input("Select Deadweight Tonnage (DWT)", value=14001))
     with col2:
-        propulsion_consumption = df_prop[df_prop['min_dwt'] >= min_dwt]['propulsion_consumption'].iloc[0]
+        propulsion_consumption = df_prop[(df_prop['min_dwt'] <= min_dwt) & (df_prop['max_dwt'] >= min_dwt)]['propulsion_consumption'].iloc[0]
         propulsion_consumption = st.number_input("Propulsion Consumption MW", value=propulsion_consumption)
 
     col1, col2 = st.columns(2)
@@ -177,15 +178,15 @@ if enable_cold_ironing:
     st.markdown("#### Note: Maximum 72hrs is considered.")
     st.success(f"### Berth Docking Time (Hours): {dock_time} hrs")
     st.markdown("### Cold Ironing Calculation Formula")
-    st.latex("\\text{Cold Ironing MW} = \\frac{\\text{Cold Ironing kW/h}}{1000} \\times \\text{Berth Docking Time (hours)}")
+    st.latex("\\text{Cold Ironing MWh} = \\frac{\\text{Cold Ironing kW/h}}{1000} \\times \\text{Berth Docking Time (hours)}")
     ci = avg_hoteling_kw / 1000 * dock_time
-    st.success(f"### Cold Ironing MW: {ci} MW")
+    st.success(f"### Cold Ironing MWh: {ci} MWh")
 
 if enable_propulsion:
     st.markdown("### Propulsion Consumption Calculation Formula")
-    st.latex("\\text{Propulsion Consumption (MW)} = \\text{Propulsion Consumption Rate (MWh/nm)} \\times \\text{Travel Distance (NM)}")
+    st.latex("\\text{Propulsion Consumption (MWh)} = \\text{Propulsion Consumption Rate (MWh/nm)} \\times \\text{Travel Distance (NM)}")
     prop = propulsion_consumption * distance_NM
-    st.success(f"### Propulsion Consumption MW: {prop} MW")
+    st.success(f"### Propulsion Consumption MWh: {prop} MWh")
 
 
 # **Emission Calculation Section**
@@ -202,14 +203,14 @@ st.divider()
 st.title("Emission Calculation Formulas")
 if enable_cold_ironing:
     st.markdown("#### Cold Ironing Engine Group: Auxillary")
-    st.latex("\\text{Pollutant Emission} = \\text{Cold Ironing Energy (MW)} \\times \\text{1000} \\times \\text{AVG(Emission Factor) (g/kWh)}")
+    st.latex("\\text{Pollutant Emission (g)} = \\text{Cold Ironing Energy (MWh)} \\times \\text{1000} \\times \\text{AVG(Emission Factor) (g/kWh)}")
 
 if enable_propulsion:    
     st.markdown("#### Propulsion Engine Group: Propulsion")
-    st.latex("\\text{Pollutant Emission} = \\text{Propulsion Energy (MW)} \\times \\text{1000} \\times \\text{AVG(Emission Factor) (g/kWh)}")
+    st.latex("\\text{Pollutant Emission (g)} = \\text{Propulsion Energy (MWh)} \\times \\text{1000} \\times \\text{AVG(Emission Factor) (g/kWh)}")
 
 
-st.latex("\\text{Total Pollutant Emission} = \\text{Cold Ironing Emission} + \\text{Propulsion Emission}")
+st.latex("\\text{Total Pollutant Emission (g)} = \\text{Cold Ironing Emission (g)} + \\text{Propulsion Emission (g)}")
 
 query_emissions = "SELECT engine_group, pollutant_name, fuel_type, engine_type, emission_factor_formula, values_g_per_kwh FROM reporting.ref_emission_factors;"
 df_emissions = get_data(query_emissions)
