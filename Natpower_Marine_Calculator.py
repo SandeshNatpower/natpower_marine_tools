@@ -127,9 +127,15 @@ if enable_cold_ironing:
     df_cold = get_data(cold_iron_query)
     df_cold['min_gt'] = pd.to_numeric(df_cold['min_gt'], errors='coerce')
     # **Cold Ironing Section*
-    st.title('Cold Ironing Caluclation')
-    st.markdown('## Cold Ironing in KW with resepective Gross Tonnage')
-    st.dataframe(df_cold)
+    st.title('Cold Ironing Calculation')
+    st.markdown('## Cold Ironing in kW/h with resepective Gross Tonnage')
+    df_cold1 = df_cold.rename(columns={
+            "min_gt": "Minimum GT",
+            "max_gt": "Maximum GT",
+            "vessel_category": "Vessel Category",
+            "average_hoteling_kw": "Cold Ironing kW/h"
+        })
+    st.dataframe(df_cold1)
     col1, col2 = st.columns(2)
     with col1:
         min_gt = int(st.number_input("Select Gross Tonnage (GT)", value=150))
@@ -140,6 +146,7 @@ if enable_cold_ironing:
     col1, col2 = st.columns(2)
     with col1:
         st.markdown('## Number of Hours stay at Dock')
+        st.markdown('#### Note: Maximum 72hrs is conisder')
     with col2:
         num_stays = st.number_input("Number of Hours of Stay", value=10, min_value=1)
 
@@ -150,14 +157,20 @@ if enable_propulsion:
 
     # **Propulsion Section**
     st.title('Propulsion Consumption')
-    st.markdown('## Propulsion in MW with resepective Dead Weight Tonnage')
-    st.dataframe(df_prop)
+    st.markdown('## Propulsion in MWh/NM with resepective Dead Weight Tonnage')
+    df_prop1 = df_prop.rename(columns={
+            "min_dwt": "Minimum DWT",
+            "max_dwt": "Maximum DWT",
+            "vessel_category": "Vessel Category",
+            "propulsion_consumption": "Propulsion Consumption MWh/NM"
+        })
+    st.dataframe(df_prop1)
     col1, col2 = st.columns(2)
     with col1:
         min_dwt = int(st.number_input("Select Deadweight Tonnage (DWT)", value=14001))
     with col2:
         propulsion_consumption = df_prop[(df_prop['min_dwt'] <= min_dwt) & (df_prop['max_dwt'] >= min_dwt)]['propulsion_consumption'].iloc[0]
-        propulsion_consumption = st.number_input("Propulsion Consumption MW", value=propulsion_consumption)
+        propulsion_consumption = st.number_input("Propulsion Consumption MWh/NM", value=propulsion_consumption)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -179,13 +192,13 @@ if enable_cold_ironing:
     st.success(f"### Berth Docking Time (Hours): {dock_time} hrs")
     st.markdown("### Cold Ironing Calculation Formula")
     st.latex("\\text{Cold Ironing MWh} = \\frac{\\text{Cold Ironing kW/h}}{1000} \\times \\text{Berth Docking Time (hours)}")
-    ci = avg_hoteling_kw / 1000 * dock_time
+    ci = round(avg_hoteling_kw / 1000 * dock_time,3)
     st.success(f"### Cold Ironing MWh: {ci} MWh")
 
 if enable_propulsion:
     st.markdown("### Propulsion Consumption Calculation Formula")
     st.latex("\\text{Propulsion Consumption (MWh)} = \\text{Propulsion Consumption Rate (MWh/nm)} \\times \\text{Travel Distance (NM)}")
-    prop = propulsion_consumption * distance_NM
+    prop = round(propulsion_consumption * distance_NM,3)
     st.success(f"### Propulsion Consumption MWh: {prop} MWh")
 
 
@@ -211,7 +224,7 @@ if enable_propulsion:
 
 
 st.latex("\\text{Total Pollutant Emission (g)} = \\text{Cold Ironing Emission (g)} + \\text{Propulsion Emission (g)}")
-
+st.warning('Note: We are currently selecting the average value. Please choose a different option to reflect another value.')
 query_emissions = "SELECT engine_group, pollutant_name, fuel_type, engine_type, emission_factor_formula, values_g_per_kwh FROM reporting.ref_emission_factors;"
 df_emissions = get_data(query_emissions)
 df_emissions['Selection'] = False
@@ -250,7 +263,7 @@ def display_pollutant_values(df, pollutant):
         
         # Data editor for selecting values
         emission_df = st.data_editor(
-            df, disabled=['engine_group', 'pollutant_name', 'fuel_type', 'engine_type', 'emission_factor_formula'])
+            df, disabled=['emission_factor_formula','engine_group', 'pollutant_name', 'fuel_type', 'engine_type'])
         
     
     with col2:
@@ -272,7 +285,7 @@ def display_pollutant_values(df, pollutant):
                 st.session_state.pollutant_state[pollutant]['prev_auxiliary_idx'] = current_auxiliary_idx
             else:
                 selected_auxiliary_value = round(emission_df[(emission_df['engine_group'] == 'Auxiliary') & (emission_df['pollutant_name'] == pollutant)]['values_g_per_kwh'].mean() ,2)
-                st.write(f'Cold Ironing - Average Value Calculated : {selected_auxiliary_value}')
+                st.warning(f'Cold Ironing - Average Value Calculated : {selected_auxiliary_value}')
 
         if enable_propulsion:  
             # Propulsion selection handling
@@ -289,7 +302,7 @@ def display_pollutant_values(df, pollutant):
                 st.session_state.pollutant_state[pollutant]['prev_propulsion_idx'] = current_propulsion_idx
             else:
                 selected_propulsion_value = round(emission_df[(emission_df['engine_group'] == 'Propulsion') & (emission_df['pollutant_name'] == pollutant)]['values_g_per_kwh'].mean() ,2)
-                st.write(f'Propulsion - Average Value Calculated : {selected_propulsion_value}')
+                st.warning(f'Propulsion - Average Value Calculated : {selected_propulsion_value}')
 
         cold_ironing_emission = 0
         if enable_cold_ironing:
@@ -322,6 +335,7 @@ for pollutant in pollutants:
         df_filtered = df_filtered[(df_filtered['engine_group'] == 'Propulsion')]
     else:
         df_filtered = df_filtered[df_filtered['engine_group'].isin(['Propulsion', 'Auxiliary'])]
+    df_filtered  = df_filtered[['Selection','values_g_per_kwh','emission_factor_formula','engine_group', 'pollutant_name', 'fuel_type', 'engine_type']]
 
     display_pollutant_values(df_filtered, pollutant)
 
